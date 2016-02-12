@@ -1,0 +1,128 @@
+<modification>
+  	<id>FlySMS Integration</id>
+	<version>1.1</version>
+	<vqmver>2.X</vqmver>
+	<author>vov1 [knopix.net]</author>
+	<file name="catalog/model/checkout/order.php">
+		<operation error="log">
+			<search position="before"><![CDATA[if ($this->config->get('config_alert_mail')) {]]></search>
+			<add>
+				<![CDATA[
+					/** FlySMS Integration **/
+ 					$this->load->model('setting/setting');
+					$settings = $this->model_setting_setting->getSetting('flysms');
+					if ( $settings['status'] == 1 ) {
+						$shortcodes = array(
+							'{store_name}',
+							'{order_id}',
+							'{order_total}',
+							'{shipping_city}',
+							'{shipping_address}',
+						);
+						$replacers = array(
+							$this->config->get('config_name'),
+							$order_id,
+							// round if float else return int
+							( (round($order_info['total'], 2)-(int)$order_info['total']) != 0 )? round($order_info['total'], 2) : (int)$order_info['total'],
+							$order_info['shipping_city'],
+							$order_info['shipping_address_1'],
+						);
+						$this->load->model('module/flysms');
+						$this->model_module_flysms->sendSMS($this->config->get('config_name').' - Order', str_replace($shortcodes, $replacers, $settings['order_new'][$order_info['language_id']]), $order_info['telephone']);
+					}
+ 					/** (END) FlySMS Integration **/
+ 				]]>
+      		</add>
+		</operation>
+	</file>
+
+	<file name="admin/model/sale/order.php">
+		<operation error="log">
+			<search position="after"><![CDATA[$mail->send();]]></search>
+			<add>
+				<![CDATA[
+					/** FlySMS Integration **/
+ 					$this->load->model('setting/setting');
+					$settings = $this->model_setting_setting->getSetting('flysms');
+					if ( $settings['status'] == 1 ) {
+						$this->load->model('module/flysms');
+						$this->model_module_flysms->sendSMS($this->config->get('config_name').' - Notification', $data['comment'], $order_info['telephone']);
+					}
+ 					/** (END) FlySMS Integration **/
+ 				]]>
+			</add>
+		</operation>
+	</file>
+
+	<file name="admin/controller/sale/order.php">
+		<operation error="log">
+			<search position="before"><![CDATA[$this->template = 'sale/order_info.tpl';]]></search>
+			<add>
+				<![CDATA[
+					/** FlySMS Integration **/
+					$this->data['text_flysms_comment'] = '';
+					$this->data['flysms_comment'] = '';
+					$this->load->model('setting/setting');
+					$settings = $this->model_setting_setting->getSetting('flysms');
+					if ( $settings['status'] == 1 ) {
+						$this->language->load('module/flysms');
+						$this->data['text_flysms_comment'] = $this->language->get('text_flysms_comment');
+						$shortcodes = array(
+							'{store_name}',
+							'{order_id}',
+							'{order_total}',
+							'{shipping_city}',
+							'{shipping_address}',
+						);
+						$replacers = array(
+							$this->config->get('config_name'),
+							$order_id,
+							// round if float else return int
+							( (round($order_info['total'], 2)-(int)$order_info['total']) != 0 )? round($order_info['total'], 2) : (int)$order_info['total'],
+							$order_info['shipping_city'],
+							$order_info['shipping_address_1'],
+						);
+						$this->data['flysms_comment'] = str_replace($shortcodes, $replacers, $settings['order_notify'][$order_info['language_id']]);
+					}
+ 					/** (END) FlySMS Integration **/
+ 				]]>
+			</add>
+		</operation>
+	</file>
+
+	<file name="admin/view/template/sale/order_info.tpl">
+		<operation error="log">
+			<search position="replace"><![CDATA[<td><?php echo $entry_comment; ?></td>]]></search>
+			<add>
+				<![CDATA[
+					<!-- FlySMS Integration -->
+					<td>
+						<?php echo $entry_comment; ?><br/><br/>
+						<span id="flysms-comment-text" style="display:none;"><?php echo $text_flysms_comment; ?></span>
+					</td>
+ 					<!-- (END) FlySMS Integration -->
+ 				]]>
+			</add>
+		</operation>
+		<operation error="log">
+			<search position="before"><![CDATA[<?php echo $footer; ?>]]></search>
+			<add>
+				<![CDATA[
+					<!-- FlySMS Integration -->
+					<textarea id="flysms-comment" style="display:none;"><?php echo $flysms_comment; ?></textarea>
+					<script type="text/javascript"><!--
+					    $('input[name=notify]').change(function() {
+					        if( this.checked ) {
+					            $('textarea[name=comment]').val( $('textarea[name=comment]').val() + $('#flysms-comment').val() );
+					            $('#flysms-comment-text').show();
+					        } else {
+					            $('#flysms-comment-text').hide();
+					        }
+					    });
+					//--></script>
+ 					<!-- (END) FlySMS Integration -->
+ 				]]>
+			</add>
+		</operation>
+	</file>
+</modification>
